@@ -10,4 +10,4 @@ models that read, write, and delete files in a workspace and run shell
 commands. You alone are responsible for any damage to your data, hardware, or
 system. By running it you accept all risk.
 """
-__version__ = "0.1.0"
+__version__ = "0.1.1"

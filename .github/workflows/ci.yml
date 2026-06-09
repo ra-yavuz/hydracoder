@@ -29,12 +29,19 @@ jobs:
               || { echo "  syntax fail: $f"; fail=1; }
           done < <(find lib/hydracoder tests -name '*.py' 2>/dev/null)
           exit $fail
-      - name: Model-free unit tests
+      - name: Unit tests (with sibling deps)
         run: |
           set -euo pipefail
-          export PYTHONPATH=lib
+          # test_m1_core is self-contained. The resilience/verifier tests
+          # import the orchestrator, which depends on lillycoder + hydra-llm
+          # (hydracoder's runtime deps). Check out those sibling repos so CI
+          # runs the real integration tests, mirroring an installed setup.
+          git clone --depth 1 https://github.com/ra-yavuz/lillycoder.git ../lillycoder
+          git clone --depth 1 https://github.com/ra-yavuz/hydra-llm.git ../hydra-llm
+          export PYTHONPATH="lib:../lillycoder/lib:../hydra-llm/lib"
           python3 tests/test_m1_core.py
           python3 tests/test_m3_resilience.py
+          python3 tests/test_m3_verifier.py
       - name: Lint shell scripts (best-effort)
         run: |
           if command -v shellcheck >/dev/null 2>&1; then
