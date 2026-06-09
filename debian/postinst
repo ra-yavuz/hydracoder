@@ -1,0 +1,6 @@
+#!/bin/sh
+set -e
+echo "hydracoder installed. Start the UI with:  hydracoder serve"
+echo "hydracoder is provided AS IS, WITHOUT WARRANTY OF ANY KIND. It runs local"
+echo "models that read/write files and run shell commands. You accept all risk."
+exit 0

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>hydracoder</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="grain" aria-hidden="true"></div>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">&#9678;</span>
+    <h1>hydra<span class="brand-dim">coder</span></h1>
+    <span class="conn" id="conn" data-state="off" title="link status">link</span>
+  </div>
+  <div class="controls">
+    <button class="ctl" data-action="pause">&#10073;&#10073; pause</button>
+    <button class="ctl" data-action="resume">&#9655; resume</button>
+    <button class="ctl" data-action="status">&#9678; status</button>
+  </div>
+</header>
+
+<section class="console-in">
+  <div class="goal-row">
+    <textarea id="goal" rows="2" placeholder="state the project goal. the orchestrator will plan it, route each task to a local model, build and review it."></textarea>
+    <button id="build" class="build-btn">build &#9656;</button>
+  </div>
+  <div class="folder-row">
+    <label for="models-dir">workspace</label>
+    <input id="models-dir" type="text" placeholder="/path/to/workspace (optional)">
+    <span class="arch" id="arch"></span>
+  </div>
+</section>
+
+<main class="stage">
+  <section class="graph-strip" aria-label="task graph">
+    <div class="strip-label">graph</div>
+    <div class="graph-scroll"><svg id="graph" preserveAspectRatio="xMinYMin meet"></svg></div>
+  </section>
+
+  <section class="terminals" id="terminals" aria-label="model terminals">
+    <div class="empty-hint" id="empty-hint">no run yet. submit a goal to spin up model terminals.</div>
+  </section>
+</main>
+
+<aside class="boss" id="boss">
+  <div class="boss-head">
+    <span class="boss-title">talk to the boss</span>
+    <span class="boss-sub">change models, modes, or ask questions mid-run</span>
+  </div>
+  <div class="boss-log" id="boss-log"></div>
+  <div class="boss-in">
+    <input id="chat" type="text" placeholder="e.g. use the tiny model for everything / pause / status">
+    <button id="send" class="send-btn">send</button>
+  </div>
+</aside>
+
+<footer class="legal">
+  hydracoder is provided AS IS, WITHOUT WARRANTY OF ANY KIND. You accept all risk. Ramazan Yavuz.
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>

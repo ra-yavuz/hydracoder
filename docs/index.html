@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>hydracoder - local-AI development orchestrator</title>
+<meta name="description" content="hydracoder turns a project goal into a task graph and drives local models to build it. By Ramazan Yavuz.">
+<style>
+  :root { --bg:#07090b; --raise:#0d1014; --line:#1b2128; --ink:#cfd6dd;
+          --dim:#6b7682; --faint:#3b434c; --amber:#ffb454; --green:#3ad29f;
+          --mono:"JetBrains Mono","DejaVu Sans Mono","Consolas",monospace; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:
+      radial-gradient(1100px 540px at 82% -10%, #0f141a 0%, transparent 60%),
+      var(--bg); color:var(--ink); font-family:var(--mono); line-height:1.6;
+      -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:880px; margin:0 auto; padding:64px 24px 96px; }
+  header { display:flex; align-items:baseline; gap:14px; margin-bottom:8px; }
+  h1 { font-size:34px; letter-spacing:0.1em; margin:0; }
+  .dim { color:var(--dim); }
+  .mark { color:var(--amber); font-size:26px; filter:drop-shadow(0 0 8px #7a5a2c); }
+  .tag { color:var(--dim); font-size:15px; margin:0 0 40px; }
+  h2 { color:var(--amber); font-size:15px; letter-spacing:0.16em;
+       text-transform:uppercase; margin:44px 0 14px; }
+  p, li { color:#aeb7c0; font-size:14px; }
+  a { color:var(--amber); }
+  code, pre { font-family:var(--mono); }
+  pre { background:var(--raise); border:1px solid var(--line);
+        border-left:2px solid #7a5a2c; border-radius:6px; padding:16px 18px;
+        overflow-x:auto; font-size:13px; color:var(--ink); }
+  .pillars { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-top:14px; }
+  .pillar { background:var(--raise); border:1px solid var(--line); border-radius:8px;
+            padding:16px; }
+  .pillar h3 { color:var(--ink); font-size:13px; margin:0 0 6px; }
+  .pillar p { font-size:12.5px; color:var(--dim); margin:0; }
+  .links a { display:inline-block; margin-right:18px; }
+  .disclaimer { margin-top:56px; padding:18px; border:1px solid #3a1c20;
+                border-radius:8px; background:#120a0c; color:#f3a7af; font-size:12.5px; }
+  footer { margin-top:40px; color:var(--faint); font-size:12px; border-top:1px solid var(--line);
+           padding-top:18px; }
+  @media(max-width:680px){ .pillars{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="mark">&#9678;</span>
+    <h1>hydra<span class="dim">coder</span></h1>
+  </header>
+  <p class="tag">A local-AI development orchestrator. Enter a project goal, watch local models plan it, build it, and review it. No corporate AI in the loop.</p>
+
+  <h2>What it is</h2>
+  <p>hydracoder is the layer that turns a goal into shipped code using only the models on your own machine. It plans the work into a task graph, routes each task to a right-sized local model, reviews every result, and keeps an append-only journal so a crash or a full context window never loses progress. It is built to keep development moving on local hardware when hosted AI becomes too expensive to use.</p>
+
+  <div class="pillars">
+    <div class="pillar"><h3>Plan</h3><p>A planner model decomposes the goal into tasks with explicit interfaces and acceptance conditions.</p></div>
+    <div class="pillar"><h3>Build</h3><p>Each task runs through a local model in an isolated context, streaming its work to a live terminal.</p></div>
+    <div class="pillar"><h3>Recover</h3><p>An append-only journal makes every run resumable. Interrupt it, restart it, it continues.</p></div>
+  </div>
+
+  <h2>Built on</h2>
+  <ul>
+    <li><a href="https://github.com/ra-yavuz/hydra-llm">hydra-llm</a> runs and manages the local models in Docker.</li>
+    <li><a href="https://github.com/ra-yavuz/lillycoder">lillycoder</a> is the per-task agent loop that reads, writes, and edits files.</li>
+  </ul>
+
+  <h2 id="install">Install</h2>
+  <pre>curl -fsSL https://ra-yavuz.github.io/apt/KEY.gpg | sudo gpg --dearmor -o /usr/share/keyrings/ra-yavuz.gpg
+echo "deb [signed-by=/usr/share/keyrings/ra-yavuz.gpg] https://ra-yavuz.github.io/apt stable main" | sudo tee /etc/apt/sources.list.d/ra-yavuz.list
+sudo apt update &amp;&amp; sudo apt install hydracoder
+
+hydracoder serve   # then open http://127.0.0.1:8765/</pre>
+
+  <h2>Links</h2>
+  <p class="links">
+    <a href="https://github.com/ra-yavuz/hydracoder">source</a>
+    <a href="https://github.com/ra-yavuz/hydracoder/releases">releases</a>
+    <a href="https://github.com/ra-yavuz/hydracoder#install">install</a>
+  </p>
+
+  <div class="disclaimer">
+    hydracoder is provided AS IS, WITHOUT WARRANTY OF ANY KIND. It runs local models that read, write, and delete files in a workspace and run shell commands on your machine. You alone are responsible for any damage to your data, hardware, or system. By running it you accept all risk.
+  </div>
+
+  <footer>Ramazan Yavuz &middot; public, open-source local-AI tools &middot; <a href="https://ramazan-yavuz.tr">ramazan-yavuz.tr</a></footer>
+</div>
+</body>
+</html>

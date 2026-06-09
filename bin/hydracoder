@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# hydracoder launcher. Serves the web UI + orchestrator.
+#
+# hydracoder is provided AS IS, WITHOUT WARRANTY OF ANY KIND. It runs local
+# models that read, write, and delete files in a workspace and run shell
+# commands. You alone are responsible for any damage. By running this you
+# accept all risk.
+set -euo pipefail
+
+# Resolve the install layout. In the repo, lib/ is a sibling of bin/. When
+# installed to /usr, the python package lives at /usr/lib/hydracoder.
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_lib="$here/../lib"
+sys_lib="/usr/lib/hydracoder"
+
+PYPATH=""
+for cand in "$repo_lib" "$sys_lib"; do
+  if [ -d "$cand/hydracoder" ]; then PYPATH="$cand"; break; fi
+done
+if [ -z "$PYPATH" ]; then
+  echo "hydracoder: cannot locate the hydracoder python package" >&2
+  exit 1
+fi
+
+# lillycoder + hydra-llm are sibling dependencies. Prefer installed locations,
+# fall back to sibling repos for development.
+for dep in lillycoder hydra-llm; do
+  for cand in "/usr/lib/$dep" "$here/../../$dep/lib"; do
+    pkg="${dep//-/_}"
+    if [ -d "$cand/$pkg" ]; then PYPATH="$PYPATH:$cand"; break; fi
+  done
+done
+
+export PYTHONPATH="$PYPATH${PYTHONPATH:+:$PYTHONPATH}"
+exec python3 -m hydracoder "$@"

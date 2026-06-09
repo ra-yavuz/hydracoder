@@ -1,0 +1,99 @@
+name: ci
+
+# Unified CI shape across ra-yavuz/* packaged repos.
+#   lint        python syntax + ast parse + the model-free unit tests
+#   build-deb   produces dist/*.deb, uploaded as artifact "dist"
+#   release     tag-only. GitHub Release + dispatch the .deb to ra-yavuz/apt.
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Syntax check (ast.parse on every .py)
+        run: |
+          set -euo pipefail
+          fail=0
+          while IFS= read -r f; do
+            python3 -c "import ast; ast.parse(open('$f').read())" \
+              || { echo "  syntax fail: $f"; fail=1; }
+          done < <(find lib/hydracoder tests -name '*.py' 2>/dev/null)
+          exit $fail
+      - name: Model-free unit tests
+        run: |
+          set -euo pipefail
+          export PYTHONPATH=lib
+          python3 tests/test_m1_core.py
+          python3 tests/test_m3_resilience.py
+      - name: Lint shell scripts (best-effort)
+        run: |
+          if command -v shellcheck >/dev/null 2>&1; then
+            shellcheck scripts/*.sh debian/postinst debian/postrm bin/hydracoder || true
+          fi
+
+  build-deb:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build deps
+        run: sudo apt-get update && sudo apt-get install -y dpkg-dev
+      - name: Build .deb
+        run: bash scripts/build-deb.sh
+      - name: Inspect .deb
+        run: |
+          dpkg-deb -I dist/*.deb
+          dpkg-deb -c dist/*.deb
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/*
+
+  release:
+    runs-on: ubuntu-latest
+    needs: build-deb
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.deb
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Notify ra-yavuz/apt to auto-publish
+        if: env.APT_DISPATCH_TOKEN != ''
+        env:
+          APT_DISPATCH_TOKEN: ${{ secrets.APT_DISPATCH_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF#refs/tags/}"
+          for deb in dist/*.deb; do
+            [ -f "$deb" ] || continue
+            arch=$(dpkg-deb -f "$deb" Architecture)
+            url="https://github.com/${{ github.repository }}/releases/download/${tag}/$(basename "$deb")"
+            curl -fsSL -X POST \
+              -H "Authorization: token $APT_DISPATCH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/ra-yavuz/apt/dispatches" \
+              -d "{\"event_type\":\"package-published\",\"client_payload\":{\"repo\":\"${{ github.repository }}\",\"tag\":\"${tag}\",\"arch\":\"${arch}\",\"deb_url\":\"${url}\"}}"
+          done

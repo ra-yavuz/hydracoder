@@ -1,0 +1,28 @@
+Source: hydracoder
+Section: utils
+Priority: optional
+Maintainer: Ramazan Yavuz <yavuzramazan1994@gmail.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+Homepage: https://github.com/ra-yavuz/hydracoder
+Vcs-Git: https://github.com/ra-yavuz/hydracoder.git
+Vcs-Browser: https://github.com/ra-yavuz/hydracoder
+Rules-Requires-Root: no
+
+Package: hydracoder
+Architecture: all
+Depends: ${misc:Depends},
+ python3 (>= 3.10),
+ python3-websockets,
+ lillycoder,
+ hydra-llm
+Description: local-AI development orchestrator with a web UI
+ hydracoder turns a project goal into a task graph and drives local models to
+ build it: a planner decomposes the goal, a scheduler routes each task to a
+ right-sized local model, a reviewer checks each result, and an append-only
+ journal makes a crash or a full context window recoverable. It runs entirely
+ on local models via hydra-llm, using lillycoder as the per-task agent loop.
+ .
+ DISCLAIMER: provided AS IS, WITHOUT WARRANTY OF ANY KIND. hydracoder runs
+ local models that read, write, and delete files and run shell commands. You
+ alone are responsible for any damage. By installing you accept all risk.

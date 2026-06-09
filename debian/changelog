@@ -1,0 +1,20 @@
+hydracoder (0.1.0-1) unstable; urgency=low
+
+  * Initial release. Local-AI development orchestrator with a web UI.
+  * Planner decomposes a project goal into a task graph with explicit
+    interfaces and per-task acceptance conditions.
+  * Routing-first scheduler sends each task to a right-sized local model
+    (small fast model for leaf tasks, larger model for harder work and
+    review), respecting hydra-llm hardware-fit detection.
+  * Worker driver embeds lillycoder's agent loop per task in an isolated
+    context, with imperative tool-first prompting and auto-retry when a
+    turn ends with no tool call.
+  * Reviewer model checks each task against its acceptance condition;
+    failed reviews are retried with the reviewer's feedback.
+  * Append-only journal is the source of truth; an interrupted run resumes
+    from the journal without losing completed work.
+  * Dark web UI: per-model live terminals, task-graph view, and a chat box
+    that routes to a boss model with conversational control tools.
+  * Depends on hydra-llm (model substrate) and lillycoder (agent loop).
+
+ -- Ramazan Yavuz <yavuzramazan1994@gmail.com>  Tue, 09 Jun 2026 21:00:00 +0300

@@ -1,0 +1,7 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: hydracoder
+Source: https://github.com/ra-yavuz/hydracoder
+
+Files: *
+Copyright: 2026 Ramazan Yavuz
+License: MIT
