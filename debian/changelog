@@ -1,7 +1,7 @@
-hydracoder (0.1.1-1) unstable; urgency=low
+hydracoder (0.1.2-1) unstable; urgency=low
 
-  * CI: check out sibling repos (lillycoder, hydra-llm) so the integration
-    tests run in CI, not just the self-contained ones.
+  * CI: install sibling runtime deps (pyyaml, httpx) so the integration
+    tests can import lillycoder + hydra-llm.
 
- -- Ramazan Yavuz <yavuzramazan1994@gmail.com>  Mon, 09 Jun 2026 23:35:00 +0300
+ -- Ramazan Yavuz <yavuzramazan1994@gmail.com>  Mon, 09 Jun 2026 23:42:00 +0300
 
