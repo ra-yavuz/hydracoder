@@ -1,7 +1,9 @@
-hydracoder (0.1.2-1) unstable; urgency=low
+hydracoder (0.1.3-1) unstable; urgency=low
 
-  * CI: install sibling runtime deps (pyyaml, httpx) so the integration
-    tests can import lillycoder + hydra-llm.
+  * CI: install the full sibling runtime dep set (rich, prompt_toolkit,
+    pydantic, pathspec, numpy, in addition to pyyaml and httpx) so the
+    integration tests can import lillycoder and hydra-llm. Verified in a
+    clean virtualenv before tagging.
 
- -- Ramazan Yavuz <yavuzramazan1994@gmail.com>  Mon, 09 Jun 2026 23:42:00 +0300
+ -- Ramazan Yavuz <yavuzramazan1994@gmail.com>  Mon, 09 Jun 2026 23:50:00 +0300
 

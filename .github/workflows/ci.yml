@@ -38,9 +38,12 @@ jobs:
           # runs the real integration tests, mirroring an installed setup.
           git clone --depth 1 https://github.com/ra-yavuz/lillycoder.git ../lillycoder
           git clone --depth 1 https://github.com/ra-yavuz/hydra-llm.git ../hydra-llm
-          # runtime deps the siblings import (hydra-llm uses PyYAML; lillycoder
-          # uses httpx). The tests that need them exercise real integration.
-          python3 -m pip install --quiet pyyaml httpx
+          # Full runtime dep set the sibling packages declare (see their
+          # debian/control). The integration tests import the orchestrator,
+          # which imports lillycoder (rich, prompt_toolkit, httpx, pydantic)
+          # and hydra-llm (pyyaml, pathspec, numpy) at module load.
+          python3 -m pip install --quiet \
+            pyyaml httpx rich prompt_toolkit pydantic pathspec numpy
           export PYTHONPATH="lib:../lillycoder/lib:../hydra-llm/lib"
           python3 tests/test_m1_core.py
           python3 tests/test_m3_resilience.py
