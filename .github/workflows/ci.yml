@@ -48,6 +48,10 @@ jobs:
           python3 tests/test_m1_core.py
           python3 tests/test_m3_resilience.py
           python3 tests/test_m3_verifier.py
+          python3 tests/test_m4_config.py
+          python3 tests/test_m5_brownfield.py
+          python3 tests/test_m6_repair_scope.py
+          python3 tests/test_m7_test_first.py
       - name: Lint shell scripts (best-effort)
         run: |
           if command -v shellcheck >/dev/null 2>&1; then

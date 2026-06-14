@@ -34,7 +34,55 @@ Rules: maximize the number of tasks with depends_on == [] so independent work \
 runs in parallel. Every depends_on id must reference another task's id. No \
 cycles. Make interfaces explicit so dependent tasks can build against them. \
 Always include a final task that wires the pieces together and one that tests \
-the result."""
+the result. Test tasks must demand real unittest.TestCase test_* methods with \
+meaningful assertions for EVERY module the plan produces; a test file with no \
+test methods fails verification. \
+If a WORKSPACE SURVEY is provided, the project ALREADY EXISTS: plan tasks \
+that MODIFY and EXTEND the existing files, referencing real paths from the \
+survey. Do not plan recreating files that already exist. Tasks must read the \
+listed spec/doc files relevant to what they change and respect the existing \
+interfaces and conventions."""
+
+
+TEST_FIRST_PLAN_SYSTEM = """You are a software architect using TEST-FIRST \
+development. Given a project goal, produce a build plan as a task graph where \
+the TESTS for each module are written and proven to fail BEFORE the module is \
+implemented. Respond with STRICT JSON only: no prose, no markdown fences. \
+Schema:
+{
+  "architecture": "1-3 sentence overview",
+  "tasks": [
+    {
+      "id": "t1",
+      "title": "short imperative title",
+      "description": "precise enough for a junior coder to implement",
+      "depends_on": ["t0"],
+      "interface": "the exact function/class/CLI signature this exposes",
+      "acceptance": "a concrete, testable pass condition",
+      "complexity": "trivial|small|medium|large",
+      "kind": "test|code",
+      "targets": ["store.py"]
+    }
+  ]
+}
+Rules for TEST-FIRST planning:
+- For EVERY module the project needs, emit TWO tasks: a kind="test" task that \
+writes test_<module>.py against the module's planned interface, and a \
+kind="code" task that implements the module. The code task MUST depend on its \
+test task (depends_on includes the test task id). The test task's "targets" \
+field lists the MODULE FILE(S) UNDER TEST that the test imports, NOT the test \
+file itself. Example: a test task that writes test_store.py has \
+"targets": ["store.py"] (because the test does `from store import ...`). \
+Never put a test_*.py name in "targets".
+- A kind="test" task writes ONLY the test file. It must define real \
+unittest.TestCase test_* methods with meaningful assertions covering every \
+acceptance condition, importing the planned interface. It must NOT implement \
+the module; the module does not exist yet, so the tests are expected to fail \
+when first run (that is the point: the audit proves they fail for the right \
+reason).
+- Give every module an explicit interface so the test task can write against \
+it precisely. No cycles. Every depends_on id must reference another task. \
+Include a final kind="code" task that wires the pieces together."""
 
 
 @dataclass
@@ -46,6 +94,14 @@ class Task:
     interface: str = ""
     acceptance: str = ""
     complexity: str = "small"
+    # "code" (default) or "test". In test-first mode a "test" task authors a
+    # test_*.py against a planned interface BEFORE the implementation exists,
+    # and is audited (must fail-first for the right reason) before any code
+    # task that depends on it runs. Greenfield default ("code") is unchanged.
+    kind: str = "code"
+    # In test-first mode, the module path a "test" task targets (e.g.
+    # "store.py"), so the audit can check the test imports the right module.
+    targets: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -98,12 +154,23 @@ class Plan:
 
 
 def make_plan(base_url: str, model: str, goal: str,
-              max_tokens: int = 2500) -> tuple[Optional[Plan], str]:
+              max_tokens: int = 2500,
+              survey: str = "",
+              test_first: bool = False) -> tuple[Optional[Plan], str]:
     """Call the planner model. Returns (plan_or_None, raw_text). On parse or
-    validation failure, plan is None and the caller can retry or surface it."""
+    validation failure, plan is None and the caller can retry or surface it.
+    `survey` (from survey.survey_workspace) makes planning brownfield-aware.
+    `test_first` asks for test tasks (kind="test") ordered BEFORE the
+    implementation tasks that depend on them, each naming the module it
+    targets, so the audit can prove the tests fail-first before any code."""
+    system = TEST_FIRST_PLAN_SYSTEM if test_first else PLAN_SYSTEM
+    user = f"Project goal: {goal}"
+    if survey:
+        user += ("\n\nWORKSPACE SURVEY (the project already exists; plan to "
+                 "modify and extend it):\n" + survey)
     resp = llm.complete(base_url, model, [
-        {"role": "system", "content": PLAN_SYSTEM},
-        {"role": "user", "content": f"Project goal: {goal}"},
+        {"role": "system", "content": system},
+        {"role": "user", "content": user},
     ], max_tokens=max_tokens, temperature=0.3)
     obj = llm.extract_json(resp["content"])
     if not obj or "tasks" not in obj:
@@ -112,6 +179,8 @@ def make_plan(base_url: str, model: str, goal: str,
     for t in obj.get("tasks", []):
         if not isinstance(t, dict) or "id" not in t:
             continue
+        kind = t.get("kind", "code")
+        kind = kind if kind in ("code", "test") else "code"
         tasks.append(Task(
             id=str(t["id"]),
             title=t.get("title", t["id"]),
@@ -120,6 +189,8 @@ def make_plan(base_url: str, model: str, goal: str,
             interface=t.get("interface", ""),
             acceptance=t.get("acceptance", ""),
             complexity=t.get("complexity", "small"),
+            kind=kind,
+            targets=[str(x) for x in (t.get("targets") or [])],
         ))
     if not tasks:
         return None, resp["content"]

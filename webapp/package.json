@@ -1,0 +1,18 @@
+{
+  "name": "hydracoder-webapp",
+  "private": true,
+  "version": "0.2.0",
+  "type": "module",
+  "description": "Source of hydracoder's web UI. `npm run build` emits static files into ../lib/hydracoder/web, which the stdlib server ships. Node is a build-time dependency only.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@fontsource/chakra-petch": "^5.1.0",
+    "@fontsource/ibm-plex-mono": "^5.1.0",
+    "typescript": "^5.6.0",
+    "vite": "^6.0.0"
+  }
+}

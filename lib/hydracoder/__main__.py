@@ -34,6 +34,8 @@ def main(argv=None) -> int:
     r.add_argument("goal")
     r.add_argument("--workspace", default="./hydracoder-workspace")
     r.add_argument("--run-dir", default="./hydracoder-run")
+    r.add_argument("--test-first", action="store_true",
+                   help="write and prove tests fail before implementing (test-first)")
 
     args = ap.parse_args(argv)
 
@@ -51,10 +53,25 @@ def main(argv=None) -> int:
 
     if args.cmd == "run":
         from .orchestrator import Orchestrator
-        orch = Orchestrator(Path(args.run_dir), Path(args.workspace),
-                            log=lambda m: print("[hydracoder]", m, flush=True))
+        try:
+            orch = Orchestrator(Path(args.run_dir), Path(args.workspace),
+                                log=lambda m: print("[hydracoder]", m, flush=True))
+        except ValueError as e:
+            # An invalid hydracoder.toml: the message says exactly what is
+            # wrong; a traceback would bury it.
+            print(f"hydracoder: {e}", file=sys.stderr)
+            return 2
+        if args.test_first:
+            orch.config.run.test_first = True
         print(DISCLAIMER)
-        result = orch.run(args.goal)
+        try:
+            result = orch.run(args.goal)
+        except RuntimeError as e:
+            # A run-time refusal the user can act on (e.g. the goal-mismatch
+            # guard, or an unusable configured model): show the message, not a
+            # traceback. The journal already recorded the error event.
+            print(f"hydracoder: {e}", file=sys.stderr)
+            return 2
         print("result:", result)
         return 0 if result.get("ok") else 1
 

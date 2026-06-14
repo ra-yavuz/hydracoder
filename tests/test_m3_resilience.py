@@ -118,6 +118,84 @@ def test_overflow_window_does_not_crash_run():
     print("  PASS tiny token budget does not crash the orchestrator")
 
 
+def test_same_goal_still_resumes_same_run_dir():
+    # Regression guard's negative case: re-running the SAME goal in the SAME
+    # run-dir must STILL resume (cases 1 and 2 of the taxonomy), not refuse.
+    run_dir = Path(tempfile.mkdtemp())
+    ws = Path(tempfile.mkdtemp())
+    roster = Roster("m", "m", "m", "m")
+    _patch([], roster)
+    orch_mod.worker_mod.run_task = lambda *a, **k: None
+
+    o1 = Orchestrator(run_dir, ws, roster=roster)
+    res1 = o1.run("build X")
+    assert res1["ok"], res1
+
+    # Same goal, same run-dir: a no-op resume of a finished run, must be ok.
+    o2 = Orchestrator(run_dir, ws, roster=roster)
+    res2 = o2.run("build X")
+    assert res2["ok"], res2
+    print("  PASS same goal re-run in same run-dir still resumes (no false refusal)")
+
+
+def test_divergent_goal_on_finished_run_is_refused():
+    # The footgun (case 3): a finished run-dir, a NEW goal -> must refuse loudly,
+    # never silently no-op. Proven by repro_followup_goal.py; this locks it.
+    run_dir = Path(tempfile.mkdtemp())
+    ws = Path(tempfile.mkdtemp())
+    roster = Roster("m", "m", "m", "m")
+    _patch([], roster)
+    orch_mod.worker_mod.run_task = lambda *a, **k: None
+
+    o1 = Orchestrator(run_dir, ws, roster=roster)
+    assert o1.run("build X")["ok"]
+
+    o2 = Orchestrator(run_dir, ws, roster=roster)
+    try:
+        o2.run("build Y")
+        raise AssertionError("divergent goal on a finished run was NOT refused")
+    except RuntimeError as e:
+        assert "build X" in str(e) and "build Y" in str(e), e
+        assert "completed" in str(e), e
+    # And the refusal is journaled as an error event, not swallowed.
+    errs = [ev.data for ev in o2.journal.replay()
+            if ev.kind == "error" and ev.data.get("where") == "goal-mismatch"]
+    assert errs, "goal-mismatch refusal was not journaled"
+    print("  PASS divergent goal on a finished run is refused and journaled")
+
+
+def test_divergent_goal_on_unfinished_run_is_refused():
+    # Case 4: a crashed/aborted run (no run_finished event), then a DIFFERENT
+    # goal. Must also refuse -- gating on finished-state alone would miss this.
+    run_dir = Path(tempfile.mkdtemp())
+    ws = Path(tempfile.mkdtemp())
+    roster = Roster("m", "m", "m", "m")
+    _patch([], roster)
+
+    def crashing_worker(task, base, model, workdir, journal, **kw):
+        if task.id == "t2":
+            raise KeyboardInterrupt("simulated crash mid-run")
+        return None
+    orch_mod.worker_mod.run_task = crashing_worker
+
+    o1 = Orchestrator(run_dir, ws, roster=roster)
+    try:
+        o1.run("build X")
+    except KeyboardInterrupt:
+        pass
+    st = o1.journal.reconstruct()
+    assert st["finished"] is None, "precondition: run must be unfinished"
+
+    o2 = Orchestrator(run_dir, ws, roster=roster)
+    try:
+        o2.run("build Y")
+        raise AssertionError("divergent goal on an unfinished run was NOT refused")
+    except RuntimeError as e:
+        assert "build X" in str(e) and "build Y" in str(e), e
+        assert "in progress" in str(e), e
+    print("  PASS divergent goal on an unfinished (crashed) run is refused")
+
+
 def _run():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = 0

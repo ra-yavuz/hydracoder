@@ -28,6 +28,8 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from typing import Optional
 
+from hydra_llm import api as hydra
+
 from .orchestrator import Orchestrator
 from .scheduler import Roster
 from . import boss as boss_mod
@@ -76,12 +78,23 @@ class HydracoderServer:
 
     # --- run control -------------------------------------------------------
 
-    def _start_run(self, goal: str) -> None:
+    def _start_run(self, goal: str, test_first: Optional[bool] = None) -> None:
         if self._run_thread and self._run_thread.is_alive():
             self._broadcast({"kind": "notice", "data": {"msg": "a run is already in progress"}})
             return
-        self._orch = Orchestrator(self.run_dir, self.workspace, roster=self.roster,
-                                  log=lambda m: self._broadcast({"kind": "log", "data": {"msg": m}}))
+        try:
+            self._orch = Orchestrator(self.run_dir, self.workspace, roster=self.roster,
+                                      log=lambda m: self._broadcast({"kind": "log", "data": {"msg": m}}))
+        except ValueError as e:
+            # Invalid hydracoder.toml in the workspace: tell the browser
+            # instead of killing the websocket handler.
+            self._broadcast({"kind": "error",
+                             "data": {"where": "config", "message": str(e)}})
+            return
+        # A boss start_feature (or the UI) can force test-first for this run
+        # without editing the workspace config file.
+        if test_first is not None:
+            self._orch.config.run.test_first = test_first
         # forward every journal event to browsers as it is appended
         self._orch.journal.subscribe(
             lambda ev: self._broadcast({"kind": ev.kind, "seq": ev.seq,
@@ -103,6 +116,9 @@ class HydracoderServer:
             try:
                 reply = boss_mod.handle_chat(self, text)
                 self._broadcast({"kind": "chat_reply", "data": {"text": reply}})
+                # A chat message may have re-pinned a role; keep the panel live.
+                if self.roster is not None:
+                    self._broadcast({"kind": "roster", "data": vars(self.roster)})
             except Exception as e:
                 self._broadcast({"kind": "error", "data": {"where": "chat", "message": str(e)}})
         threading.Thread(target=_go, daemon=True).start()
@@ -120,6 +136,24 @@ class HydracoderServer:
                                           "ts": ev.ts, "data": ev.data}))
         except Exception:
             pass
+        # Then the model inventory + current roster, for the roster panel.
+        # list_models talks to hydra-llm, so it runs off the event loop.
+        # Distinguish "inventory failed" (tell the browser) from "client went
+        # away" (a normal end: leave quietly, no traceback noise).
+        try:
+            models = await asyncio.to_thread(hydra.list_models)
+            payload = json.dumps({"kind": "models", "data": {"models": models}})
+        except Exception as e:
+            payload = json.dumps({"kind": "notice",
+                                  "data": {"msg": f"model list unavailable: {e}"}})
+        try:
+            await ws.send(payload)
+            if self.roster is not None:
+                await ws.send(json.dumps({"kind": "roster",
+                                          "data": vars(self.roster)}))
+        except Exception:
+            self._clients.discard(ws)
+            return
         try:
             async for raw in ws:
                 try:
@@ -134,7 +168,11 @@ class HydracoderServer:
                 elif kind == "chat" and msg.get("text"):
                     self._handle_chat(msg["text"])
                 elif kind == "control" and msg.get("action"):
-                    boss_mod.apply_control(self, msg["action"], msg.get("args", {}))
+                    result = boss_mod.apply_control(self, msg["action"],
+                                                    msg.get("args", {}))
+                    self._broadcast({"kind": "notice", "data": {"msg": result}})
+                    if self.roster is not None:
+                        self._broadcast({"kind": "roster", "data": vars(self.roster)})
         finally:
             self._clients.discard(ws)
 

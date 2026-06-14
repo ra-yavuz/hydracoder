@@ -45,6 +45,16 @@ CONTROL_TOOLS = [
     {"type": "function", "function": {
         "name": "status", "description": "Report the current run state.",
         "parameters": {"type": "object", "properties": {}}}},
+    {"type": "function", "function": {
+        "name": "start_feature",
+        "description": ("Implement a feature using TEST-FIRST development: write "
+                        "and prove the tests fail before any code, then build. "
+                        "Use this when the user asks to add or implement a "
+                        "feature and wants it done test-first."),
+        "parameters": {"type": "object", "properties": {
+            "goal": {"type": "string",
+                     "description": "what to build, in plain language"}},
+            "required": ["goal"]}}},
 ]
 
 
@@ -88,6 +98,16 @@ def apply_control(server, action: str, args: dict) -> str:
         for t in tasks.values():
             by_state[t.get("state", "?")] = by_state.get(t.get("state", "?"), 0) + 1
         return "tasks: " + ", ".join(f"{k}={v}" for k, v in sorted(by_state.items()))
+
+    if action == "start_feature":
+        goal = args.get("goal", "").strip()
+        if not goal:
+            return "start_feature needs a goal"
+        # Test-first: tests authored and proven to fail before any code.
+        if hasattr(server, "_start_run"):
+            server._start_run(goal, test_first=True)
+            return f"starting test-first feature build: {goal}"
+        return "cannot start a run in this context"
 
     return f"unknown action: {action}"
 

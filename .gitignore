@@ -3,3 +3,5 @@ __pycache__/
 dist/
 hydracoder-run/
 hydracoder-workspace/
+webapp/node_modules/
+.bash_history

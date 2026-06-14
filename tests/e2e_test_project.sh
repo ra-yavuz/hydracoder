@@ -63,7 +63,7 @@ ls -la "$WS_DIR"
 
 # --- run the generated project's OWN tests (the authoritative proof) ---
 echo "== running generated test_store.py =="
-cd "$WS_DIR"
+cd "$WS_DIR" || { echo "FAIL: cannot cd into workspace $WS_DIR"; exit 1; }
 if [ ! -f test_store.py ]; then
   echo "FAIL: generated project has no test_store.py"
   exit 1
@@ -74,6 +74,28 @@ rc=$?
 echo "generated-tests exit: $rc"
 if [ "$rc" -ne 0 ]; then
   echo "FAIL: generated test suite did not pass"
+  exit "$rc"
+fi
+# --- no generated test file may be vacuous (0 collected tests) ---
+# Independent re-check of the verifier's vacuous-test gate: a test file with
+# zero test methods exits 0 and proves nothing (the original e2e produced a
+# test_server.py with no test methods and it passed silently).
+echo "== checking all generated test files collect at least 1 test =="
+python3 - <<'PY'
+import sys, unittest
+from pathlib import Path
+bad = []
+for p in sorted(Path(".").glob("test_*.py")):
+    n = unittest.defaultTestLoader.loadTestsFromName(p.stem).countTestCases()
+    print(f"  {p.name}: {n} tests")
+    if n == 0:
+        bad.append(p.name)
+if bad:
+    print("FAIL: vacuous test file(s):", ", ".join(bad))
+    sys.exit(1)
+PY
+rc=$?
+if [ "$rc" -ne 0 ]; then
   exit "$rc"
 fi
 echo "PASS: hydracoder built a working, self-tested project with local models only"

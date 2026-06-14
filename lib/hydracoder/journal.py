@@ -25,19 +25,31 @@ from typing import Any, Callable, Iterable, Optional
 
 # --- the event contract, as named constants (use these, not bare strings) ----
 # Each value documents the expected `data` dict for that kind.
-RUN_STARTED = "run_started"      # {goal, models_dir}
+RUN_STARTED = "run_started"      # {goal, models_dir, config?}  config = the
+                                 #   normalized effective Config; resumes
+                                 #   reuse it instead of re-reading the file
 PLAN_CREATED = "plan_created"    # {architecture, tasks:[task-spec dicts]}
-TASK_STATE = "task_state"        # {task_id, state, detail?}  state in TASK_STATES
+TASK_STATE = "task_state"        # {task_id, state, detail?, model?}  state in
+                                 #   TASK_STATES; model = the id running it
 WORKER_EVENT = "worker_event"    # {task_id, event}  event = a lillycoder sink event
 REVIEW = "review"                # {task_id, passed, notes, attempt?}
 COMPACTION = "compaction"        # {task_id, before_pct, after_pct}
 DECISION = "decision"            # {what, why}
 ERROR = "error"                  # {where, message, recovered}
 CONTROL = "control"              # {action, args}  boss-model control-tool call
+REPAIR_SCOPE = "repair_scope"    # {round, violation, in_scope, out_of_scope,
+                                 #  test_edits, implicated}  per repair round:
+                                 #  did edits stay within the failing tests'
+                                 #  implicated files (collateral detector)
+TEST_AUDIT = "test_audit"        # {task_id, attempt, ok, reason, collected,
+                                 #  fail_kind}  test-first: did a test file
+                                 #  fail-first for the right reason before its
+                                 #  implementation existed
 RUN_FINISHED = "run_finished"    # {ok, summary}
 
 EVENT_KINDS = {RUN_STARTED, PLAN_CREATED, TASK_STATE, WORKER_EVENT, REVIEW,
-               COMPACTION, DECISION, ERROR, CONTROL, RUN_FINISHED}
+               COMPACTION, DECISION, ERROR, CONTROL, REPAIR_SCOPE, TEST_AUDIT,
+               RUN_FINISHED}
 
 # The states a task moves through (the `state` field of a TASK_STATE event).
 TASK_STATES = ("queued", "running", "review", "done", "failed", "blocked")
@@ -131,13 +143,14 @@ class Journal:
         continue from whatever was not yet done."""
         state: dict[str, Any] = {
             "goal": None, "models_dir": None, "plan": None,
-            "tasks": {}, "finished": None,
+            "tasks": {}, "finished": None, "config": None,
         }
         for ev in self.replay():
             d = ev.data
             if ev.kind == RUN_STARTED:
                 state["goal"] = d.get("goal")
                 state["models_dir"] = d.get("models_dir")
+                state["config"] = d.get("config")
             elif ev.kind == PLAN_CREATED:
                 state["plan"] = d
                 for t in d.get("tasks", []):
